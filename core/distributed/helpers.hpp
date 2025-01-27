@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2017 - 2024 The Ginkgo authors
+// SPDX-FileCopyrightText: 2017 - 2025 The Ginkgo authors
 //
 // SPDX-License-Identifier: BSD-3-Clause
 
@@ -156,15 +156,19 @@ template <typename T, typename F, typename... Args>
 auto run_matrix(T* linop, F&& f, Args&&... args)
 {
     using namespace gko::experimental::distributed;
-    return run<Matrix<double, int32, int32>, Matrix<double, int32, int64>,
-               Matrix<double, int64, int64>, Matrix<float, int32, int32>,
-               Matrix<float, int32, int64>, Matrix<float, int64, int64>,
-               Matrix<std::complex<double>, int32, int32>,
-               Matrix<std::complex<double>, int32, int64>,
-               Matrix<std::complex<double>, int64, int64>,
-               Matrix<std::complex<float>, int32, int32>,
-               Matrix<std::complex<float>, int32, int64>,
-               Matrix<std::complex<float>, int64, int64>>(
+    return run<
+        with_same_constness_t<Matrix<double, int32, int32>, T>,
+        with_same_constness_t<Matrix<double, int32, int64>, T>,
+        with_same_constness_t<Matrix<double, int64, int64>, T>,
+        with_same_constness_t<Matrix<float, int32, int32>, T>,
+        with_same_constness_t<Matrix<float, int32, int64>, T>,
+        with_same_constness_t<Matrix<float, int64, int64>, T>,
+        with_same_constness_t<Matrix<std::complex<double>, int32, int32>, T>,
+        with_same_constness_t<Matrix<std::complex<double>, int32, int64>, T>,
+        with_same_constness_t<Matrix<std::complex<double>, int64, int64>, T>,
+        with_same_constness_t<Matrix<std::complex<float>, int32, int32>, T>,
+        with_same_constness_t<Matrix<std::complex<float>, int32, int64>, T>,
+        with_same_constness_t<Matrix<std::complex<float>, int64, int64>, T>>(
         linop, std::forward<F>(f), std::forward<Args>(args)...);
 }
 
@@ -214,6 +218,21 @@ create_submatrix_helper(experimental::distributed::Vector<ValueType>* mtx,
 
 
 #endif
+
+
+inline const LinOp* get_local(const LinOp* mtx)
+{
+#if GINKGO_BUILD_MPI
+    if (is_distributed(mtx)) {
+        return run_matrix(mtx, [](auto concrete) {
+            return concrete->get_local_matrix().get();
+        });
+    }
+#endif
+    {
+        return mtx;
+    }
+}
 
 
 }  // namespace detail
