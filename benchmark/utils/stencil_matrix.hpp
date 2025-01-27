@@ -76,6 +76,8 @@ generate_2d_stencil_subdomain(std::array<int, 2> dims,
     const auto global_discretization_points =
         static_cast<IndexType>(closest_nth_root(target_global_size, 2));
 
+    // The rounded-down number of local discrectization points per dimension
+    // and its rest.
     const std::array<IndexType, 2> discretization_points_min = {
         global_discretization_points / dims[0],
         global_discretization_points / dims[1]};
@@ -83,12 +85,25 @@ generate_2d_stencil_subdomain(std::array<int, 2> dims,
         global_discretization_points % dims[0],
         global_discretization_points % dims[1]};
 
+    /**
+     * The subdomain size in a single dimension. This is either
+     * discretization_points_min[dim], or discretization_points_min[dim]+1.
+     * The first R process have the +1 added, such that the sum of the
+     * subdomain size over all processes equals to the
+     * global_discretization_points.
+     */
     auto subdomain_size_1d = [&](const IndexType dim, const IndexType i) {
         assert(0 <= i && i < dims[dim]);
         return discretization_points_min[dim] +
                (i < discretization_points_rest[dim] ? 1 : 0);
     };
 
+    /**
+     * The offset of a subdomain in a single dimension. Since the first R
+     * processes have a subdomain size of discretization_points_min[dim]+1, the
+     * offset adds min(subdomain-id, R) to
+     * discretization_points_min[dim]*subdomain-id
+     */
     auto subdomain_offset_1d = [&](const IndexType dim, const IndexType i) {
         assert(0 <= i && i < dims[dim]);
         return discretization_points_min[dim] * i +
